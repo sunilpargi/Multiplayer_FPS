@@ -1,0 +1,49 @@
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Sway : MonoBehaviour
+{
+    #region varibles
+    public float intensity;
+    public float smooth;
+
+    private Quaternion originRotation;
+    #endregion
+
+
+
+    #region monobehaviour callbacks
+    private void Start()
+    {
+        originRotation = transform.localRotation;
+    }
+
+    private void Update()
+    {
+        UpdateSway();
+    }
+    #endregion
+
+
+
+    #region private method
+
+    void UpdateSway()
+    {
+        //controls
+        float t_x_mouse = Input.GetAxis("Mouse X");
+        float t_y_mouse = Input.GetAxis("Mouse Y");
+
+        //calculate target rotation
+        Quaternion t_x_axis = Quaternion.AngleAxis(-intensity * t_x_mouse , Vector3.up);
+        Quaternion t_y_axis = Quaternion.AngleAxis(intensity * t_y_mouse , Vector3.right);
+        Quaternion target_rotation = originRotation * t_x_axis * t_y_axis;
+
+        //rotate towards target rotation
+        transform.localRotation = Quaternion.Lerp(transform.localRotation, target_rotation, Time.deltaTime * smooth);
+
+    }
+
+    #endregion
+}

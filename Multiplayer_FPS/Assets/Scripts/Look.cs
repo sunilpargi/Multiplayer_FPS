@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class Look : MonoBehaviour
 {
+    #region variables
+
     public Transform player;
     public Transform cams;
     public Transform weapon;
@@ -16,6 +18,9 @@ public class Look : MonoBehaviour
 
 
     Quaternion camsCenter;
+    #endregion
+
+    #region monobehaviour callbacks
     void Start()
     {
         camsCenter = cams.localRotation;
@@ -29,7 +34,9 @@ public class Look : MonoBehaviour
         SetX();
         UpdateCursorState();
     }
+    #endregion
 
+    #region private method
     void SetY()
     {
         float t_Input = Input.GetAxis("Mouse Y") * ySensitivity * Time.deltaTime;
@@ -38,7 +45,7 @@ public class Look : MonoBehaviour
 
         if (Quaternion.Angle(camsCenter, t_Delta) < maxAngle)
         {
-            cams.localRotation = t_Delta; 
+            cams.localRotation = t_Delta;
         }
         weapon.rotation = cams.rotation;
 
@@ -51,7 +58,7 @@ public class Look : MonoBehaviour
         Quaternion t_adj = Quaternion.AngleAxis(t_Input, Vector3.up);
         Quaternion t_Delta = player.localRotation * t_adj; // to add the quaternion, multiple the quaternions
 
-         player.localRotation = t_Delta;
+        player.localRotation = t_Delta;
 
     }
 
@@ -79,6 +86,8 @@ public class Look : MonoBehaviour
             }
         }
     }
+    #endregion
+
 }//class
 
 

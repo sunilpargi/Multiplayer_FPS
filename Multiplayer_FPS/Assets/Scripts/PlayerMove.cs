@@ -2,6 +2,7 @@
 
 public class PlayerMove : MonoBehaviour
 {
+    #region variables
     public float speed = 10f;
     public float sprintModifier;
     public float jumpForce;
@@ -14,6 +15,9 @@ public class PlayerMove : MonoBehaviour
 
     public Transform groundDetector;
     public LayerMask ground;
+    #endregion
+
+    #region monobehaviour callbacks
     void Start()
     {
         Camera.main.enabled = false;
@@ -21,9 +25,30 @@ public class PlayerMove : MonoBehaviour
         rb = GetComponent<Rigidbody>();
 
     }
+    private void Update()
+    {
+        //Axis
+        float h_Move = Input.GetAxisRaw("Horizontal");
+        float v_Move = Input.GetAxisRaw("Vertical");
+
+        //control
+        bool sprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        bool jump = Input.GetKeyDown(KeyCode.Space);
+
+        //States
+        bool IsGrounded = Physics.Raycast(groundDetector.position, Vector3.down, 0.1f, ground);
+        bool Isjumping = jump && IsGrounded;
+        bool IsSprinting = sprint && v_Move > 0 && !Isjumping && IsGrounded;
+
+        //Jumping
+        if (Isjumping)
+        {
+            rb.AddForce(Vector3.up * jumpForce);
+        }
+    }
 
     // Update is called once per frame
-   
+
     private void FixedUpdate()
     {
         //Axis
@@ -39,11 +64,7 @@ public class PlayerMove : MonoBehaviour
         bool Isjumping = jump && IsGrounded;
         bool IsSprinting = sprint && v_Move > 0 && !Isjumping && IsGrounded;
 
-        //Jumping
-        if (Isjumping)
-        {
-            rb.AddForce(Vector3.up * jumpForce);
-        }
+       
 
         //Movement
         Vector3 direction = new Vector3(h_Move, 0, v_Move);
@@ -66,4 +87,5 @@ public class PlayerMove : MonoBehaviour
             normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV, Time.deltaTime * 8f);
         }
     }
+    #endregion
 }

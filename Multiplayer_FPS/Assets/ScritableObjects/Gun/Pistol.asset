@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   name: 
   fireRate: 1000
+  aimRate: 10
   prefab: {fileID: 5391432898298246633, guid: 687ac63b517c92e4fbcc665c5e5afcc1, type: 3}
