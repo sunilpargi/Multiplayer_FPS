@@ -18,8 +18,8 @@ public class PlayerMove : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        float h_Move = Input.GetAxis("Horizontal");
-        float v_Move = Input.GetAxis("Vertical");
+        float h_Move = Input.GetAxisRaw("Horizontal");
+        float v_Move = Input.GetAxisRaw("Vertical");
 
         Vector3 direction = new Vector3(h_Move, 0, v_Move);
         direction.Normalize();
