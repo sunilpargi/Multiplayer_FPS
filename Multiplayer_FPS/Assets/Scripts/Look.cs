@@ -6,6 +6,7 @@ public class Look : MonoBehaviour
 {
     public Transform player;
     public Transform cams;
+    public Transform weapon;
 
     public float xSensitivity;
     public float ySensitivity;
@@ -35,7 +36,12 @@ public class Look : MonoBehaviour
         Quaternion t_adj = Quaternion.AngleAxis(t_Input, -Vector3.right);
         Quaternion t_Delta = cams.localRotation * t_adj; // to add the quaternion, multiple the quaternions
 
-        if(Quaternion.Angle(camsCenter, t_Delta) < maxAngle) cams.localRotation = t_Delta;
+        if (Quaternion.Angle(camsCenter, t_Delta) < maxAngle)
+        {
+            cams.localRotation = t_Delta; 
+        }
+        weapon.rotation = cams.rotation;
+
 
     }
 
