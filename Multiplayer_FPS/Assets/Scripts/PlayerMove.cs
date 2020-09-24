@@ -6,6 +6,8 @@ public class PlayerMove : MonoBehaviour
     public float speed = 10f;
     public float sprintModifier;
     public float jumpForce;
+    private float movementCounter;
+    private float idleCounter;
 
     private Rigidbody rb;
 
@@ -15,6 +17,10 @@ public class PlayerMove : MonoBehaviour
 
     public Transform groundDetector;
     public LayerMask ground;
+
+    private Vector3 targetWeaponBobPosition;
+    private Vector3 weaponOriginPosition;
+    public Transform weaponParent;
     #endregion
 
     #region monobehaviour callbacks
@@ -23,6 +29,7 @@ public class PlayerMove : MonoBehaviour
         Camera.main.enabled = false;
         baseFOV = normalCam.fieldOfView;
         rb = GetComponent<Rigidbody>();
+        weaponOriginPosition = weaponParent.position;
 
     }
     private void Update()
@@ -45,7 +52,32 @@ public class PlayerMove : MonoBehaviour
         {
             rb.AddForce(Vector3.up * jumpForce);
         }
+
+        //HeadBob
+        if(h_Move == 0 && v_Move == 0)
+        {
+            HeadBob(idleCounter, 10.025f, 10.025f);
+            idleCounter += Time.deltaTime;
+            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 2f);
+            Debug.Log("working");
+
+        }
+        else if(!IsSprinting)
+        {
+            HeadBob(movementCounter, 5.035f, 5.035f);
+            movementCounter += Time.deltaTime * 3f;
+            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
+        }
+        else 
+        {
+            HeadBob(movementCounter, 0.09f, 0.05f);
+            movementCounter += Time.deltaTime * 7f;
+            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 10f);
+        }
+
     }
+
+    
 
     // Update is called once per frame
 
@@ -88,4 +120,15 @@ public class PlayerMove : MonoBehaviour
         }
     }
     #endregion
+
+    #region private method
+
+    void HeadBob(float x_z, float x_intensity, float y_intensity)
+    {
+       
+        Vector3 targetWeapoonBobPosition = weaponOriginPosition + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
+    }
+
+    #endregion
+
 }

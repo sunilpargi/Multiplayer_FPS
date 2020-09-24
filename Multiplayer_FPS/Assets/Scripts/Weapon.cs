@@ -9,11 +9,16 @@ public class Weapon : MonoBehaviour
     public Transform weaponParent;
 
     private GameObject currentWeapon;
-    #endregion
+
     private int currentInd;
 
- 
-   private bool gunEnabled;
+
+    private bool gunEnabled;
+
+    public GameObject bulletPrefab;
+    public LayerMask canBeShoot;
+    #endregion
+
 
     #region monobehaviour callbacks
     void Update()
@@ -26,13 +31,8 @@ public class Weapon : MonoBehaviour
         if (gunEnabled)
         {
             Aim(Input.GetMouseButton(1));
+            if (Input.GetMouseButton(0)) Shoot();
         }
-
-
-     
-
-
-  
     }
     #endregion
 
@@ -58,7 +58,7 @@ public class Weapon : MonoBehaviour
         {
             //aim
             t_Anchor.position = Vector3.Lerp(t_Anchor.position, t_states_ADS.position, Time.deltaTime * loadout[currentInd].aimRate);
-            Debug.Log(t_Anchor.position);
+
         }
         else
         {
@@ -68,6 +68,16 @@ public class Weapon : MonoBehaviour
     }
 
   
-
+    void Shoot()
+    {
+        Transform t_spawn = transform.Find("Cameras/Normal Camera").transform;
+        RaycastHit t_hit = new RaycastHit();
+        if(Physics.Raycast(t_spawn.position, t_spawn.forward, out t_hit, canBeShoot))
+        {
+            GameObject t_newHole = Instantiate(bulletPrefab, t_hit.point + t_hit.normal * 0.001f, Quaternion.identity);
+            t_newHole.transform.LookAt(t_hit.point + t_hit.normal);
+            Destroy(t_newHole, 3f);
+        }
+    }
     #endregion
 }
