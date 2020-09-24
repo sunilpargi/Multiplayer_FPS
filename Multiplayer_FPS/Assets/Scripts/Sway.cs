@@ -1,8 +1,9 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Photon.Pun;
 
-public class Sway : MonoBehaviour
+public class Sway : MonoBehaviourPunCallbacks
 {
     #region varibles
     public float intensity;
@@ -21,6 +22,7 @@ public class Sway : MonoBehaviour
 
     private void Update()
     {
+        if (!photonView.IsMine) return;
         UpdateSway();
     }
     #endregion

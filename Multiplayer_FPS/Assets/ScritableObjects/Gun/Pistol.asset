@@ -12,7 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc52124576ce30d4eb5d924634a26ae9, type: 3}
   m_Name: Pistol
   m_EditorClassIdentifier: 
-  name: 
-  fireRate: 1000
-  aimRate: 10
+  name: Pistol
+  fireRate: 0.5
+  bloom: 20
+  recoil: 10
+  kickback: 0.15
+  aimRate: 7
   prefab: {fileID: 5391432898298246633, guid: 687ac63b517c92e4fbcc665c5e5afcc1, type: 3}

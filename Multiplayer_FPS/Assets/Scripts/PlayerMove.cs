@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
+using Photon.Pun;
 
-public class PlayerMove : MonoBehaviour
+public class PlayerMove : MonoBehaviourPunCallbacks
 {
     #region variables
     public float speed = 10f;
@@ -12,6 +13,7 @@ public class PlayerMove : MonoBehaviour
     private Rigidbody rb;
 
     public Camera normalCam;
+    public GameObject cameraParent;
     private float baseFOV;
     private float sprintFOVModifier = 1.5f;
 
@@ -26,7 +28,11 @@ public class PlayerMove : MonoBehaviour
     #region monobehaviour callbacks
     void Start()
     {
-        Camera.main.enabled = false;
+        
+         cameraParent.SetActive(photonView.IsMine);
+        if (!photonView.IsMine) gameObject.layer = 11;
+        
+       if(Camera.main) Camera.main.enabled = false;
         baseFOV = normalCam.fieldOfView;
         rb = GetComponent<Rigidbody>();
         weaponOriginPosition = weaponParent.position;
@@ -34,6 +40,7 @@ public class PlayerMove : MonoBehaviour
     }
     private void Update()
     {
+        if (!photonView.IsMine) return;
         //Axis
         float h_Move = Input.GetAxisRaw("Horizontal");
         float v_Move = Input.GetAxisRaw("Vertical");
@@ -83,6 +90,7 @@ public class PlayerMove : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (!photonView.IsMine) return;
         //Axis
         float h_Move = Input.GetAxisRaw("Horizontal");
         float v_Move = Input.GetAxisRaw("Vertical");
@@ -126,7 +134,7 @@ public class PlayerMove : MonoBehaviour
     void HeadBob(float x_z, float x_intensity, float y_intensity)
     {
        
-        Vector3 targetWeapoonBobPosition = weaponOriginPosition + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
+        Vector3 targetWeapoonBobPosition = weaponOriginPosition+ new Vector3(weaponOriginPosition.x,weaponOriginPosition.y + 1f, weaponOriginPosition.z) + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
     }
 
     #endregion
