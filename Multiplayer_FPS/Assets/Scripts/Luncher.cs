@@ -19,18 +19,18 @@ public class Luncher : MonoBehaviourPunCallbacks
         PhotonNetwork.JoinLobby();
         base.OnConnectedToMaster();
     }
+    public override void OnJoinRandomFailed(short returnCode, string message)
+    {
+        Create();
+
+        base.OnJoinRandomFailed(returnCode, message);
+    }
     public override void OnJoinedRoom()
     {
         Debug.Log("Connected");
         StartGame();
 
         base.OnJoinedRoom();
-    }
-    public override void OnJoinRandomFailed(short returnCode, string message)
-    {
-        Create();
-
-        base.OnJoinRandomFailed(returnCode, message);
     }
 
     void connect()

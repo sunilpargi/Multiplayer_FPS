@@ -271,7 +271,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &8348496574263024683
 Transform:
   m_ObjectHideFlags: 0
@@ -455,6 +455,7 @@ MonoBehaviour:
   speed: 500
   sprintModifier: 2
   jumpForce: 1000
+  max_health: 1000
   normalCam: {fileID: 8348496573115620987}
   cameraParent: {fileID: 8348496574263024682}
   groundDetector: {fileID: 8348496572971460748}

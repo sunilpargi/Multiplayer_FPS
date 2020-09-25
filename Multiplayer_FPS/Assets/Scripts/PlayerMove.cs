@@ -7,8 +7,10 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     public float speed = 10f;
     public float sprintModifier;
     public float jumpForce;
+    public int max_health;
     private float movementCounter;
     private float idleCounter;
+    private int current_health;
 
     private Rigidbody rb;
 
@@ -23,12 +25,14 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     private Vector3 targetWeaponBobPosition;
     private Vector3 weaponOriginPosition;
     public Transform weaponParent;
+
+    private Manager manager;
     #endregion
 
     #region monobehaviour callbacks
     void Start()
     {
-        
+        current_health = max_health;
          cameraParent.SetActive(photonView.IsMine);
         if (!photonView.IsMine) gameObject.layer = 11;
         
@@ -36,6 +40,8 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         baseFOV = normalCam.fieldOfView;
         rb = GetComponent<Rigidbody>();
         weaponOriginPosition = weaponParent.position;
+
+        manager = GameObject.Find("Manager").GetComponent<Manager>();
 
     }
     private void Update()
@@ -59,6 +65,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         {
             rb.AddForce(Vector3.up * jumpForce);
         }
+        if (Input.GetKeyDown(KeyCode.U)) Takedamage(500);
 
         //HeadBob
         if(h_Move == 0 && v_Move == 0)
@@ -136,6 +143,29 @@ public class PlayerMove : MonoBehaviourPunCallbacks
        
         Vector3 targetWeapoonBobPosition = weaponOriginPosition+ new Vector3(weaponOriginPosition.x,weaponOriginPosition.y + 1f, weaponOriginPosition.z) + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
     }
+
+    #endregion
+
+    #region public method
+
+   
+    public void Takedamage(int p_damage)
+    {
+        if (photonView.IsMine)
+        {
+            current_health -= p_damage;
+            Debug.Log(current_health);
+
+            if(current_health <= 0)
+            {
+                manager.Spawn();
+                PhotonNetwork.Destroy(gameObject);
+                Debug.Log("Died");
+            }
+        }
+      
+    }
+
 
     #endregion
 

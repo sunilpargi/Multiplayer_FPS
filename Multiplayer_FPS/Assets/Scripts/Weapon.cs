@@ -64,7 +64,7 @@ public class Weapon : MonoBehaviourPunCallbacks
         GameObject t_newWeapon = Instantiate(loadout[p_ind].prefab, weaponParent.position, weaponParent.rotation, weaponParent) as GameObject;
         t_newWeapon.transform.localPosition = Vector3.zero;
         t_newWeapon.transform.localEulerAngles = Vector3.zero;
-        t_newWeapon.GetComponent<Sway>().enabled = photonView.IsMine;
+        t_newWeapon.GetComponent<Sway>().Ismine = photonView.IsMine;
 
         currentWeapon = t_newWeapon;
 
@@ -112,7 +112,7 @@ public class Weapon : MonoBehaviourPunCallbacks
             {
                 if(t_hit.collider.gameObject.layer == 11)
                 {
-                    //
+                    t_hit.collider.gameObject.GetPhotonView().RPC("TakeDamage", RpcTarget.All, loadout[currentIndex].damage);
                 }
             }
         }
@@ -123,6 +123,12 @@ public class Weapon : MonoBehaviourPunCallbacks
 
         //cooldown fire rate
         currentCoolDown += loadout[currentIndex].fireRate;
+    }
+
+    [PunRPC]
+    private void TakeDamge(int p_damage)
+    {
+        GetComponent<PlayerMove>().Takedamage(p_damage);
     }
     #endregion
 }
