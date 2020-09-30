@@ -25,8 +25,8 @@ public class Weapon : MonoBehaviourPunCallbacks
     #region monobehaviour callbacks
     void Update()
     {
-        if (!photonView.IsMine) return;
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+     
+        if (photonView.IsMine &&Input.GetKeyDown(KeyCode.Alpha1))
         {
             photonView.RPC("Equip", RpcTarget.All, 0);
             gunEnabled = true;
@@ -34,18 +34,22 @@ public class Weapon : MonoBehaviourPunCallbacks
 
         if (gunEnabled)
         {
-            Aim(Input.GetMouseButton(1));
-
-            if (Input.GetMouseButtonDown(0) && currentCoolDown <= 0)
+            if (photonView.IsMine)
             {
-                photonView.RPC("Shoot", RpcTarget.All);
+                Aim(Input.GetMouseButton(1));
+
+                if (Input.GetMouseButtonDown(0) && currentCoolDown <= 0)
+                {
+                    photonView.RPC("Shoot", RpcTarget.All);
+                }
+                //cooldown
+                if (currentCoolDown > 0) currentCoolDown -= Time.deltaTime;
             }
 
             //weapon position elasticity
             currentWeapon.transform.localPosition = Vector3.Lerp(currentWeapon.transform.localPosition, Vector3.zero, Time.deltaTime * 4f);
 
-            //cooldown
-           if(currentCoolDown > 0) currentCoolDown -= Time.deltaTime;
+          
         }
 
         
