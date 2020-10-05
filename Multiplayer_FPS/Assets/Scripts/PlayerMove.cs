@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 using Photon.Pun;
 
 public class PlayerMove : MonoBehaviourPunCallbacks
@@ -28,27 +29,34 @@ public class PlayerMove : MonoBehaviourPunCallbacks
 
 
     private Manager manager;
+    private Weapon weapon;
     private Transform ui_healthbar;
+    private Text ui_ammo;
     #endregion
 
     #region monobehaviour callbacks
     void Start()
     {
+        manager = GameObject.Find("Manager").GetComponent<Manager>();
+        weapon = GetComponent<Weapon>();
+
         current_health = max_health;
-         cameraParent.SetActive(photonView.IsMine);
+
+        cameraParent.SetActive(photonView.IsMine);
         if (!photonView.IsMine) gameObject.layer = 11;
         
        if(Camera.main) Camera.main.enabled = false;
         baseFOV = normalCam.fieldOfView;
+
         rb = GetComponent<Rigidbody>();
         weaponOriginPosition = weaponParent.position;
-
-        manager = GameObject.Find("Manager").GetComponent<Manager>();
 
         if (photonView.IsMine)
         {
             ui_healthbar = GameObject.Find("HUD /Health/Bar").transform;
+            ui_ammo = GameObject.Find("HUD/Ammo/Text").GetComponent<Text>();
             RefreshHealthBar();
+            
         }
        
 
@@ -97,6 +105,11 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             movementCounter += Time.deltaTime * 7f;
             weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 10f);
         }
+
+
+        //UI Refresher
+        RefreshHealthBar();
+        weapon.RefreshAmmo(ui_ammo);
 
     }
 

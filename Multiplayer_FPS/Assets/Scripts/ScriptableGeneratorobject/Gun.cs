@@ -8,11 +8,45 @@ public class Gun : ScriptableObject
 {
     public string name;
     public float fireRate;
-    
+    public int ammo;
+    public int clipsize;
     public float bloom;
     public float recoil;
     public float kickback;
     public float aimRate;
+    public float reloadTime;
     public GameObject prefab;
     public int damage;
+
+    private int stash; // current ammo
+    private int clip;  // current clip
+
+
+    public void Initialise()
+    {
+        stash = ammo;
+        clip = clipsize;
+    }
+    public bool fireBullet()
+    {
+        if(clip > 0)
+        {
+            clip--;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    public void Relaod()
+    {
+        stash += clip;
+        clip = Mathf.Min(clipsize, stash);
+        stash -= clip;
+    }
+
+    public int GetStash() { return stash; }
+    public int GetClip() { return clip; }
 }

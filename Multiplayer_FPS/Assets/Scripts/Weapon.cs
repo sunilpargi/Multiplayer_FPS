@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using Photon.Pun;
 
 public class Weapon : MonoBehaviourPunCallbacks
@@ -19,10 +20,18 @@ public class Weapon : MonoBehaviourPunCallbacks
     public GameObject bulletPrefab;
     public LayerMask canBeShoot;
     public float currentCoolDown;
+
+    private bool isReloading;
     #endregion
 
 
     #region monobehaviour callbacks
+
+    private void Start()
+    {
+        foreach (Gun a in loadout) a.Initialise();
+        Equip(0);
+    }
     void Update()
     {
      
@@ -40,7 +49,15 @@ public class Weapon : MonoBehaviourPunCallbacks
 
                 if (Input.GetMouseButtonDown(0) && currentCoolDown <= 0)
                 {
-                    photonView.RPC("Shoot", RpcTarget.All);
+                    if (loadout[currentIndex].fireBullet()) photonView.RPC("Shoot", RpcTarget.All); // if have bullet then shoot
+
+                    else StartCoroutine(Reload(loadout[currentIndex].reloadTime));
+
+                }
+
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    StartCoroutine(Reload(loadout[currentIndex].reloadTime));
                 }
                 //cooldown
                 if (currentCoolDown > 0) currentCoolDown -= Time.deltaTime;
@@ -57,13 +74,27 @@ public class Weapon : MonoBehaviourPunCallbacks
     #endregion
 
     #region private method
+    IEnumerator Reload(float p_wait)
+    {
+        isReloading = true;
+        currentWeapon.SetActive(false);
 
+        yield return new WaitForSeconds(p_wait);
+        loadout[currentIndex].Relaod();
+        currentWeapon.SetActive(true);
+
+        isReloading = false; 
+
+    }
 
     [PunRPC]
     void Equip(int p_ind)
     {
-        if (currentWeapon != null) Destroy(currentWeapon);
-
+        if (currentWeapon != null)
+        {
+            if (isReloading) StopCoroutine("Reload");
+            Destroy(currentWeapon);
+        }
         currentIndex = p_ind;
         GameObject t_newWeapon = Instantiate(loadout[p_ind].prefab, weaponParent.position, weaponParent.rotation, weaponParent) as GameObject;
         t_newWeapon.transform.localPosition = Vector3.zero;
@@ -134,5 +165,17 @@ public class Weapon : MonoBehaviourPunCallbacks
     {
         GetComponent<PlayerMove>().Takedamage(p_damage);
     }
+    #endregion
+
+    #region public method
+
+   public void RefreshAmmo(Text p_text)
+    {
+        int t_clip = loadout[currentIndex].GetClip();
+        int t_stash = loadout[currentIndex].GetStash();
+
+        p_text.text = t_clip.ToString("D2") + "/" + t_stash.ToString("D2"); 
+    }
+
     #endregion
 }

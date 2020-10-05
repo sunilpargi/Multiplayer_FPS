@@ -14,6 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   name: Pistol
   fireRate: 0.15
+  ammo: 20
+  clipsize: 3
   bloom: 20
   recoil: 10
   kickback: 0.15
