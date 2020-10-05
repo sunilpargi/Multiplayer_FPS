@@ -11,8 +11,18 @@ public class Luncher : MonoBehaviourPunCallbacks
     {
         PhotonNetwork.AutomaticallySyncScene = true;
         connect();
+        
     }// Start is called before the first frame update
-
+    void connect()
+    {
+        Debug.Log("tring to connect");
+        PhotonNetwork.GameVersion = "0,0,0";
+        PhotonNetwork.ConnectUsingSettings();
+    }
+    void Join()
+    {
+        PhotonNetwork.JoinRandomRoom();
+    }
     public override void OnConnectedToMaster()
     {
 
@@ -33,16 +43,8 @@ public class Luncher : MonoBehaviourPunCallbacks
         base.OnJoinedRoom();
     }
 
-    void connect()
-    {
-        Debug.Log("tring to connect");
-        PhotonNetwork.GameVersion = "0,0,0";
-        PhotonNetwork.ConnectUsingSettings();
-    }
-    void Join()
-    {
-        PhotonNetwork.JoinRandomRoom();
-    }
+  
+  
     void Create()
     {
         PhotonNetwork.CreateRoom("");

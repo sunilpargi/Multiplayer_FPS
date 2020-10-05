@@ -7,9 +7,9 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     public float speed = 10f;
     public float sprintModifier;
     public float jumpForce;
-    public int max_health;
     private float movementCounter;
     private float idleCounter;
+    public int max_health;
     private int current_health;
 
     private Rigidbody rb;
@@ -26,7 +26,9 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     private Vector3 weaponOriginPosition;
     public Transform weaponParent;
 
+
     private Manager manager;
+    private Transform ui_healthbar;
     #endregion
 
     #region monobehaviour callbacks
@@ -42,6 +44,13 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         weaponOriginPosition = weaponParent.position;
 
         manager = GameObject.Find("Manager").GetComponent<Manager>();
+
+        if (photonView.IsMine)
+        {
+            ui_healthbar = GameObject.Find("HUD /Health/Bar").transform;
+            RefreshHealthBar();
+        }
+       
 
     }
     private void Update()
@@ -144,6 +153,11 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         Vector3 targetWeapoonBobPosition = weaponOriginPosition+ new Vector3(weaponOriginPosition.x,weaponOriginPosition.y + 1f, weaponOriginPosition.z) + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
     }
 
+    void RefreshHealthBar()
+    {
+        float t_health_ratio = (float)current_health / (float)max_health;
+        ui_healthbar.localScale = Vector3.Lerp(ui_healthbar.localScale,  new Vector3(t_health_ratio, 1, 1), Time.deltaTime * 8f);
+    }
     #endregion
 
     #region public method
@@ -154,9 +168,9 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         if (photonView.IsMine)
         {
             current_health -= p_damage;
-            Debug.Log(current_health);
+            RefreshHealthBar();
 
-            if(current_health <= 0)
+            if (current_health <= 0)
             {
                 manager.Spawn();
                 PhotonNetwork.Destroy(gameObject);
