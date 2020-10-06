@@ -7,6 +7,8 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     #region variables
     public float speed = 10f;
     public float sprintModifier;
+    public float lengthOfSlide;
+    public float slideModifier;
     public float jumpForce;
     private float movementCounter;
     private float idleCounter;
@@ -18,6 +20,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     public Camera normalCam;
     public GameObject cameraParent;
     private float baseFOV;
+    private Vector3 originCameraPosition;
     private float sprintFOVModifier = 1.5f;
 
     public Transform groundDetector;
@@ -25,13 +28,19 @@ public class PlayerMove : MonoBehaviourPunCallbacks
 
     private Vector3 targetWeaponBobPosition;
     private Vector3 weaponOriginPosition;
+    private Vector3 weaponParentCurrentPosition;
     public Transform weaponParent;
 
 
     private Manager manager;
     private Weapon weapon;
+
     private Transform ui_healthbar;
     private Text ui_ammo;
+
+    private bool sliding;
+    private float slide_time;
+    private Vector3 slide_dir;
     #endregion
 
     #region monobehaviour callbacks
@@ -47,9 +56,11 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         
        if(Camera.main) Camera.main.enabled = false;
         baseFOV = normalCam.fieldOfView;
+        originCameraPosition = normalCam.transform.position;
 
         rb = GetComponent<Rigidbody>();
         weaponOriginPosition = weaponParent.position;
+        weaponParentCurrentPosition = weaponOriginPosition;
 
         if (photonView.IsMine)
         {
@@ -85,7 +96,10 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         if (Input.GetKeyDown(KeyCode.U)) Takedamage(500);
 
         //HeadBob
-        if(h_Move == 0 && v_Move == 0)
+
+        if(sliding) { return; }
+
+       else if(h_Move == 0 && v_Move == 0)
         {
             HeadBob(idleCounter, 10.025f, 10.025f);
             idleCounter += Time.deltaTime;
@@ -127,34 +141,70 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         //control
         bool sprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool jump   = Input.GetKeyDown(KeyCode.Space);
+        bool slide = Input.GetKey(KeyCode.LeftControl);
 
         //States
         bool IsGrounded = Physics.Raycast(groundDetector.position, Vector3.down, 0.1f, ground);
         bool Isjumping = jump && IsGrounded;
         bool IsSprinting = sprint && v_Move > 0 && !Isjumping && IsGrounded;
+        bool IsSliding = IsSprinting && slide && !sliding; ;
 
-       
+
+        Vector3 t_direction = Vector3.zero;
+        float t_adjSpeed = speed;
 
         //Movement
-        Vector3 direction = new Vector3(h_Move, 0, v_Move);
-        direction.Normalize();
-
-        float t_adjSpeed = speed;
-        if (IsSprinting) t_adjSpeed *= sprintModifier;
-
-        Vector3 t_targetVelocity = transform.TransformDirection(direction) * t_adjSpeed * Time.deltaTime;
-        t_targetVelocity.y = rb.velocity.y;
-        rb.velocity = t_targetVelocity;
-
-        //FOV
-        if (IsSprinting)
+        if (!IsSliding)
         {
-            normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier, Time.deltaTime * 8f);
+            t_direction = new Vector3(h_Move, 0, v_Move);
+            t_direction.Normalize();
+            transform.TransformDirection(t_direction);
+
+            if (IsSprinting) t_adjSpeed *= sprintModifier;
         }
         else
         {
-            normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV, Time.deltaTime * 8f);
+            t_direction = slide_dir;
+            t_adjSpeed *= slideModifier;
+            slide_time -= Time.deltaTime;
+            if(slide_time < 0)
+            {
+                IsSliding = false;
+                weaponParentCurrentPosition += Vector3.up * 0.5f;
+            }
         }
+
+        Vector3 t_targetVelocity = t_direction * t_adjSpeed * Time.deltaTime;
+        t_targetVelocity.y = rb.velocity.y;
+        rb.velocity = t_targetVelocity;
+
+        //sliding
+        if (IsSliding)
+        {
+            sliding = true;
+            slide_dir = t_direction;
+            slide_time = lengthOfSlide;
+            weaponParentCurrentPosition += Vector3.down * 0.5f;
+        }
+
+        //Camera stuff
+        if (IsSliding)
+        {
+            normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier * 1.25f, Time.deltaTime * 8f);
+            normalCam.transform.localPosition = Vector3.Lerp(normalCam.transform.localPosition, originCameraPosition + Vector3.down * 0.5f, Time.deltaTime * 6f);
+        }
+        else
+        {
+            if (IsSprinting)
+            {
+                normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier, Time.deltaTime * 8f);
+            }
+            else
+            {
+                normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV, Time.deltaTime * 8f);
+            }
+        }
+      
     }
     #endregion
 
@@ -163,7 +213,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     void HeadBob(float x_z, float x_intensity, float y_intensity)
     {
        
-        Vector3 targetWeapoonBobPosition = weaponOriginPosition+ new Vector3(weaponOriginPosition.x,weaponOriginPosition.y + 1f, weaponOriginPosition.z) + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
+        Vector3 targetWeapoonBobPosition = weaponParentCurrentPosition + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
     }
 
     void RefreshHealthBar()
