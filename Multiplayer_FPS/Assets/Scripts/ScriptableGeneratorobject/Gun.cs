@@ -10,6 +10,7 @@ public class Gun : ScriptableObject
     public float fireRate;
     public int ammo;
     public int clipsize;
+    public int burst; // 0 semi / 1 auto/ 2+ burst fire
     public float bloom;
     public float recoil;
     public float kickback;

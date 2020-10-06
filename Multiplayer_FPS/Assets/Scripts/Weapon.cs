@@ -20,6 +20,7 @@ public class Weapon : MonoBehaviourPunCallbacks
     public GameObject bulletPrefab;
     public LayerMask canBeShoot;
     public float currentCoolDown;
+    public bool isAiming;
 
     private bool isReloading;
     #endregion
@@ -40,6 +41,11 @@ public class Weapon : MonoBehaviourPunCallbacks
             photonView.RPC("Equip", RpcTarget.All, 0);
             gunEnabled = true;
         }
+        if (photonView.IsMine && Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            photonView.RPC("Equip", RpcTarget.All, 1);
+            gunEnabled = true;
+        }
 
         if (gunEnabled)
         {
@@ -47,12 +53,25 @@ public class Weapon : MonoBehaviourPunCallbacks
             {
                 Aim(Input.GetMouseButton(1));
 
-                if (Input.GetMouseButtonDown(0) && currentCoolDown <= 0)
+                if (loadout[currentIndex].burst != 1)
                 {
-                    if (loadout[currentIndex].fireBullet()) photonView.RPC("Shoot", RpcTarget.All); // if have bullet then shoot
+                    if (Input.GetMouseButtonDown(0) && currentCoolDown <= 0)
+                    {
+                        if (loadout[currentIndex].fireBullet()) photonView.RPC("Shoot", RpcTarget.All); // if have bullet then shoot
 
-                    else StartCoroutine(Reload(loadout[currentIndex].reloadTime));
+                        else StartCoroutine(Reload(loadout[currentIndex].reloadTime));
 
+                    }
+                }
+                else
+                {
+                    if (Input.GetMouseButton(0) && currentCoolDown <= 0)
+                    {
+                        if (loadout[currentIndex].fireBullet()) photonView.RPC("Shoot", RpcTarget.All); // if have bullet then shoot
+
+                        else StartCoroutine(Reload(loadout[currentIndex].reloadTime));
+
+                    }
                 }
 
                 if (Input.GetKeyDown(KeyCode.R))
@@ -106,6 +125,8 @@ public class Weapon : MonoBehaviourPunCallbacks
     }
     void Aim(bool p_Aiming)
     {
+        isAiming = p_Aiming;
+
         Transform t_Anchor     = currentWeapon.transform.Find("Anchor");
         Transform t_states_hip = currentWeapon.transform.Find("States/Hip");
         Transform t_states_ADS = currentWeapon.transform.Find("States/ADS");

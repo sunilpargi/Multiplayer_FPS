@@ -7,15 +7,24 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     #region variables
     public float speed = 10f;
     public float sprintModifier;
-    public float lengthOfSlide;
     public float slideModifier;
+    public float crouchModifier;
+    public float lengthOfSlide;
+
+    private Rigidbody rb;
     public float jumpForce;
-    private float movementCounter;
-    private float idleCounter;
+
     public int max_health;
     private int current_health;
 
-    private Rigidbody rb;
+    private float movementCounter;
+    private float idleCounter;
+
+    public float slideAmout;
+    public float crouchAmout;
+    private GameObject standingCollider;
+    private GameObject crouchingCollider;
+    private bool crouched;
 
     public Camera normalCam;
     public GameObject cameraParent;
@@ -82,24 +91,40 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         //control
         bool sprint = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         bool jump = Input.GetKeyDown(KeyCode.Space);
+        bool crouch = Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.LeftControl);
 
         //States
-        bool IsGrounded = Physics.Raycast(groundDetector.position, Vector3.down, 0.1f, ground);
+        bool IsGrounded = Physics.Raycast(groundDetector.position, Vector3.down, 0.15f, ground);
         bool Isjumping = jump && IsGrounded;
         bool IsSprinting = sprint && v_Move > 0 && !Isjumping && IsGrounded;
+        bool IsCrouching = crouch && !IsSprinting && !Isjumping && IsGrounded;
+
+
+        //Crouching
+        if (IsCrouching)
+        {
+            photonView.RPC("SetCrouch", RpcTarget.All, !crouched);
+        }
+
 
         //Jumping
         if (Isjumping)
         {
+            if(crouched) photonView.RPC("SetCrouch", RpcTarget.All, false);
+
             rb.AddForce(Vector3.up * jumpForce);
         }
         if (Input.GetKeyDown(KeyCode.U)) Takedamage(500);
 
+
         //HeadBob
+        if(sliding)  // if sliding
+        {
+            HeadBob(movementCounter, 0.15f, 5.075f);
+            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
+        }
 
-        if(sliding) { return; }
-
-       else if(h_Move == 0 && v_Move == 0)
+       else if(h_Move == 0 && v_Move == 0) // if standing
         {
             HeadBob(idleCounter, 10.025f, 10.025f);
             idleCounter += Time.deltaTime;
@@ -107,13 +132,19 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             Debug.Log("working");
 
         }
-        else if(!IsSprinting)
+        else if(!IsSprinting && !IsCrouching)  // if walking
         {
             HeadBob(movementCounter, 5.035f, 5.035f);
             movementCounter += Time.deltaTime * 3f;
             weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
         }
-        else 
+        else if (!IsSprinting && !IsCrouching)  // if crouching
+        {
+            HeadBob(movementCounter, 0.02f, 0.02f);
+            movementCounter += Time.deltaTime * 3f;
+            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
+        }
+        else   // if sprinting
         {
             HeadBob(movementCounter, 0.09f, 0.05f);
             movementCounter += Time.deltaTime * 7f;
@@ -160,7 +191,16 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             t_direction.Normalize();
             transform.TransformDirection(t_direction);
 
-            if (IsSprinting) t_adjSpeed *= sprintModifier;
+            if (IsSprinting) 
+            {
+                if (crouched) photonView.RPC("SetCrouch", RpcTarget.All, false);
+                t_adjSpeed *= sprintModifier;
+                    
+            }
+            else if (crouched)
+            {
+                t_adjSpeed *= crouchModifier;
+            }
         }
         else
         {
@@ -181,17 +221,19 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         //sliding
         if (IsSliding)
         {
+
             sliding = true;
             slide_dir = t_direction;
             slide_time = lengthOfSlide;
-            weaponParentCurrentPosition += Vector3.down * 0.5f;
+            weaponParentCurrentPosition += Vector3.down * (slideAmout - crouchAmout);
+            if(!crouched) photonView.RPC("SetCrouch", RpcTarget.All, true);
         }
 
         //Camera stuff
         if (IsSliding)
         {
             normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier * 1.25f, Time.deltaTime * 8f);
-            normalCam.transform.localPosition = Vector3.Lerp(normalCam.transform.localPosition, originCameraPosition + Vector3.down * 0.5f, Time.deltaTime * 6f);
+            normalCam.transform.localPosition = Vector3.Lerp(normalCam.transform.localPosition, originCameraPosition + Vector3.down * slideAmout, Time.deltaTime * 6f);
         }
         else
         {
@@ -199,6 +241,11 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             {
                 normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier, Time.deltaTime * 8f);
             }
+            if (crouched)
+            {
+                normalCam.transform.localPosition = Vector3.Lerp(normalCam.transform.localPosition, originCameraPosition + Vector3.down * crouchAmout, Time.deltaTime * 6f);
+            }
+
             else
             {
                 normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV, Time.deltaTime * 8f);
@@ -209,11 +256,12 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     #endregion
 
     #region private method
-
     void HeadBob(float x_z, float x_intensity, float y_intensity)
     {
-       
-        Vector3 targetWeapoonBobPosition = weaponParentCurrentPosition + new Vector3(Mathf.Cos(x_z * 5) * x_intensity, Mathf.Sin(x_z * 5) * y_intensity,0); 
+        float t_aim_adjust = 1f;
+        if (weapon.isAiming) t_aim_adjust = 0.1f;
+
+        Vector3 targetWeapoonBobPosition = weaponParentCurrentPosition + new Vector3(Mathf.Cos(x_z * 5) * x_intensity * t_aim_adjust, Mathf.Sin(x_z * 5) * y_intensity * t_aim_adjust,0); 
     }
 
     void RefreshHealthBar()
@@ -221,11 +269,30 @@ public class PlayerMove : MonoBehaviourPunCallbacks
         float t_health_ratio = (float)current_health / (float)max_health;
         ui_healthbar.localScale = Vector3.Lerp(ui_healthbar.localScale,  new Vector3(t_health_ratio, 1, 1), Time.deltaTime * 8f);
     }
+
+    [PunRPC]
+    void SetCrouch(bool p_state)
+    {
+        if (crouched == p_state) return;
+
+        crouched = p_state;
+
+        if (crouched)
+        {
+            standingCollider.SetActive(false);
+            crouchingCollider.SetActive(true);
+            weaponParentCurrentPosition += Vector3.down * crouchAmout;
+        }
+        else
+        {
+            standingCollider.SetActive(true);
+            crouchingCollider.SetActive(false);
+            weaponParentCurrentPosition -= Vector3.down * crouchAmout;
+        }
+    }
     #endregion
 
-    #region public method
-
-   
+    #region public method   
     public void Takedamage(int p_damage)
     {
         if (photonView.IsMine)
