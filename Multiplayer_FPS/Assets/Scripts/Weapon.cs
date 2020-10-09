@@ -8,33 +8,37 @@ public class Weapon : MonoBehaviourPunCallbacks
 {
     #region varibles
     public Gun[] loadout;
-    public Transform weaponParent;
-
-    private GameObject currentWeapon;
-
     private int currentIndex;
 
+    public Transform weaponParent;
+    private GameObject currentWeapon;
 
     private bool gunEnabled;
 
     public GameObject bulletPrefab;
     public LayerMask canBeShoot;
     public float currentCoolDown;
-    public bool isAiming;
 
+    public bool isAiming;
     private bool isReloading;
+    [HideInInspector] public Gun currentGunData;
+
+    Animator currentWeaponAnim;
+    public AudioSource sfx;
     #endregion
 
 
     #region monobehaviour callbacks
-
     private void Start()
     {
         foreach (Gun a in loadout) a.Initialise();
         Equip(0);
+        currentWeaponAnim = currentWeapon.GetComponent<Animator>();
+        
     }
     void Update()
     {
+        if (Pause.paused && photonView.IsMine) return;
      
         if (photonView.IsMine &&Input.GetKeyDown(KeyCode.Alpha1))
         {
@@ -51,7 +55,6 @@ public class Weapon : MonoBehaviourPunCallbacks
         {
             if (photonView.IsMine)
             {
-                Aim(Input.GetMouseButton(1));
 
                 if (loadout[currentIndex].burst != 1)
                 {
@@ -74,12 +77,14 @@ public class Weapon : MonoBehaviourPunCallbacks
                     }
                 }
 
-                if (Input.GetKeyDown(KeyCode.R))
-                {
-                    StartCoroutine(Reload(loadout[currentIndex].reloadTime));
-                }
                 //cooldown
                 if (currentCoolDown > 0) currentCoolDown -= Time.deltaTime;
+
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    photonView.RPC("ReloadRPC", RpcTarget.All);
+                }
+              
             }
 
             //weapon position elasticity
@@ -93,10 +98,22 @@ public class Weapon : MonoBehaviourPunCallbacks
     #endregion
 
     #region private method
+
+    [PunRPC]
+    private void ReloadRPC()
+    {
+        StartCoroutine(Reload(loadout[currentIndex].reloadTime));
+    }
     IEnumerator Reload(float p_wait)
     {
         isReloading = true;
-        currentWeapon.SetActive(false);
+
+        if (currentWeapon.GetComponent<Animator>()) 
+        {
+            currentWeapon.GetComponent<Animator>().Play("Reload", 0, 0);
+        }
+        else { currentWeapon.SetActive(false); }
+       
 
         yield return new WaitForSeconds(p_wait);
         loadout[currentIndex].Relaod();
@@ -106,6 +123,7 @@ public class Weapon : MonoBehaviourPunCallbacks
 
     }
 
+
     [PunRPC]
     void Equip(int p_ind)
     {
@@ -114,20 +132,35 @@ public class Weapon : MonoBehaviourPunCallbacks
             if (isReloading) StopCoroutine("Reload");
             Destroy(currentWeapon);
         }
+
         currentIndex = p_ind;
+
         GameObject t_newWeapon = Instantiate(loadout[p_ind].prefab, weaponParent.position, weaponParent.rotation, weaponParent) as GameObject;
         t_newWeapon.transform.localPosition = Vector3.zero;
         t_newWeapon.transform.localEulerAngles = Vector3.zero;
         t_newWeapon.GetComponent<Sway>().Ismine = photonView.IsMine;
 
+        if (photonView.IsMine) ChangeLayersRecursively(t_newWeapon, 10);
+        else ChangeLayersRecursively(t_newWeapon, 0);
+
+        t_newWeapon.GetComponent<Animator>().Play("Equip", 0, 0);
+
         currentWeapon = t_newWeapon;
+        currentGunData = loadout[p_ind];
 
     }
-    void Aim(bool p_Aiming)
+    private void ChangeLayersRecursively(GameObject p_target, int p_layer)
     {
+        p_target.layer = p_layer;
+        foreach (Transform a in p_target.transform) ChangeLayersRecursively(a.gameObject, p_layer);
+    }
+    public void Aim(bool p_Aiming)
+    {
+        if (!currentWeapon) return;
+
         isAiming = p_Aiming;
 
-        Transform t_Anchor     = currentWeapon.transform.Find("Anchor");
+        Transform t_Anchor     = currentWeapon.transform.Find("Root");
         Transform t_states_hip = currentWeapon.transform.Find("States/Hip");
         Transform t_states_ADS = currentWeapon.transform.Find("States/ADS");
 
@@ -150,35 +183,50 @@ public class Weapon : MonoBehaviourPunCallbacks
         //bloom
         Transform t_spawn = transform.Find("Cameras/Normal Camera").transform;
 
-        Vector3 t_bloom = t_spawn.position + t_spawn.forward * 1000f;
-        t_bloom += Random.Range(-loadout[currentIndex].bloom, loadout[currentIndex].bloom) * t_spawn.up;
-        t_bloom += Random.Range(-loadout[currentIndex].bloom, loadout[currentIndex].bloom) * t_spawn.right;
-        t_bloom -= t_spawn.position;
-        t_bloom.Normalize();
-
-        //Raycast
-        RaycastHit t_hit = new RaycastHit();
-        if(Physics.Raycast(t_spawn.position, t_bloom, out t_hit, canBeShoot))
-        {
-            GameObject t_newHole = Instantiate(bulletPrefab, t_hit.point + t_hit.normal * 0.001f, Quaternion.identity);
-            t_newHole.transform.LookAt(t_hit.point + t_hit.normal);
-            Destroy(t_newHole, 3f);
-
-            if (photonView.IsMine)
-            {
-                if(t_hit.collider.gameObject.layer == 11)
-                {
-                    t_hit.collider.gameObject.GetPhotonView().RPC("TakeDamage", RpcTarget.All, loadout[currentIndex].damage);
-                }
-            }
-        }
-
-        //gun fx
-        currentWeapon.transform.Rotate(-loadout[currentIndex].recoil, 0, 0);
-        currentWeapon.transform.position -= currentWeapon.transform.forward * loadout[currentIndex].kickback;
-
         //cooldown fire rate
         currentCoolDown += loadout[currentIndex].fireRate;
+
+        for (int i = 0; i < Mathf.Max(1, currentGunData.pellets); i++)
+        {
+            
+
+            Vector3 t_bloom = t_spawn.position + t_spawn.forward * 1000f;
+            t_bloom += Random.Range(-loadout[currentIndex].bloom, loadout[currentIndex].bloom) * t_spawn.up;
+            t_bloom += Random.Range(-loadout[currentIndex].bloom, loadout[currentIndex].bloom) * t_spawn.right;
+            t_bloom -= t_spawn.position;
+            t_bloom.Normalize();
+
+            //Raycast
+            RaycastHit t_hit = new RaycastHit();
+            if (Physics.Raycast(t_spawn.position, t_bloom, out t_hit, canBeShoot))
+            {
+                GameObject t_newHole = Instantiate(bulletPrefab, t_hit.point + t_hit.normal * 0.001f, Quaternion.identity);
+                t_newHole.transform.LookAt(t_hit.point + t_hit.normal);
+                Destroy(t_newHole, 3f);
+
+                if (photonView.IsMine)
+                {
+                    if (t_hit.collider.gameObject.layer == 11)
+                    {
+                        t_hit.collider.transform.root.gameObject.GetPhotonView().RPC("TakeDamage", RpcTarget.All, loadout[currentIndex].damage);
+                    }
+                }
+            }
+
+            //sound
+            sfx.Stop();
+            sfx.clip = currentGunData.gunshotSound;
+            sfx.volume = currentGunData.shotVolume;
+            sfx.pitch = 1 - currentGunData.pitchRandomization + Random.Range(-currentGunData.pitchRandomization, currentGunData.pitchRandomization);
+            sfx.Play();
+
+            //gun fx
+            currentWeapon.transform.Rotate(-loadout[currentIndex].recoil, 0, 0);
+            currentWeapon.transform.position -= currentWeapon.transform.forward * loadout[currentIndex].kickback;
+
+            if (currentGunData.recovery) currentWeapon.GetComponent<Animator>().Play("Recovery", 0, 0);
+
+        }
     }
 
     [PunRPC]
@@ -189,7 +237,6 @@ public class Weapon : MonoBehaviourPunCallbacks
     #endregion
 
     #region public method
-
    public void RefreshAmmo(Text p_text)
     {
         int t_clip = loadout[currentIndex].GetClip();

@@ -3,134 +3,99 @@ using System.Collections.Generic;
 using UnityEngine;
 using Photon.Pun;
 
-public class Look : MonoBehaviourPunCallbacks
+namespace Com.Kawaiisun.SimpleHostile
 {
-    #region variables
-
-    public Transform player;
-    public Transform cams;
-    public Transform weapon;
-
-    public float xSensitivity;
-    public float ySensitivity;
-    public float maxAngle;
-
-    public static bool cursorLocked;
-
-
-    Quaternion camsCenter;
-    #endregion
-
-    #region monobehaviour callbacks
-    void Start()
+    public class Look : MonoBehaviourPunCallbacks
     {
-        camsCenter = cams.localRotation;
-        cursorLocked = true;
-    }
+        #region Variables
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (!photonView.IsMine) return;
-        SetY();
-        SetX();
-        UpdateCursorState();
-    }
-    #endregion
+        public static bool cursorLocked = true;
 
-    #region private method
-    void SetY()
-    {
-        float t_Input = Input.GetAxis("Mouse Y") * ySensitivity * Time.deltaTime;
-        Quaternion t_adj = Quaternion.AngleAxis(t_Input, -Vector3.right);
-        Quaternion t_Delta = cams.localRotation * t_adj; // to add the quaternion, multiple the quaternions
+        public Transform player;
+        public Transform normalCam;
+        public Transform weaponCam;
+   
+        public Transform weapon;
 
-        if (Quaternion.Angle(camsCenter, t_Delta) < maxAngle)
+        public float xSensitivity;
+        public float ySensitivity;
+        public float maxAngle;
+
+        private Quaternion camCenter;
+
+        #endregion
+
+        #region Monobehaviour Callbacks
+
+        void Start()
         {
-            cams.localRotation = t_Delta;
+            camCenter = normalCam.localRotation; //set rotation origin for cameras to camCenter
         }
-        weapon.rotation = cams.rotation;
 
-
-    }
-
-    void SetX()
-    {
-        float t_Input = Input.GetAxis("Mouse X") * ySensitivity * Time.deltaTime;
-        Quaternion t_adj = Quaternion.AngleAxis(t_Input, Vector3.up);
-        Quaternion t_Delta = player.localRotation * t_adj; // to add the quaternion, multiple the quaternions
-
-        player.localRotation = t_Delta;
-
-    }
-
-    void UpdateCursorState()
-    {
-        if (cursorLocked)
+        void Update()
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            if (!photonView.IsMine) return;
+            if (Pause.paused)  return;
+           
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            SetY();
+            SetX();
+
+            UpdateCursorLock();
+
+            weaponCam.rotation = normalCam.rotation;
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        void SetY()
+        {
+            float t_input = Input.GetAxis("Mouse Y") * ySensitivity * Time.deltaTime;
+            Quaternion t_adj = Quaternion.AngleAxis(t_input, -Vector3.right);
+            Quaternion t_delta = normalCam.localRotation * t_adj;
+
+            if (Quaternion.Angle(camCenter, t_delta) < maxAngle)
             {
-                cursorLocked = false;
+                normalCam.localRotation = t_delta;
+            }
+
+            weapon.rotation = normalCam.rotation;
+        }
+
+        void SetX()
+        {
+            float t_input = Input.GetAxis("Mouse X") * xSensitivity * Time.deltaTime;
+            Quaternion t_adj = Quaternion.AngleAxis(t_input, Vector3.up);
+            Quaternion t_delta = player.localRotation * t_adj;
+            player.localRotation = t_delta;
+        }
+
+        void UpdateCursorLock()
+        {
+            if (cursorLocked)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    cursorLocked = false;
+                }
+            }
+            else
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    cursorLocked = true;
+                }
             }
         }
 
-        else
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-
-            if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                cursorLocked = true;
-            }
-        }
+        #endregion
     }
-    #endregion
-
-}//class
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}

@@ -18,9 +18,17 @@ public class Gun : ScriptableObject
     public float reloadTime;
     public GameObject prefab;
     public int damage;
+   [Range(0,1)] public float mainFOV;
+    [Range(0, 1)] public float weaponFOV;
+    public AudioClip gunshotSound;
+    public float pitchRandomization;
+    public float shotVolume;
 
     private int stash; // current ammo
     private int clip;  // current clip
+
+    public int pellets;
+    public bool recovery;
 
 
     public void Initialise()

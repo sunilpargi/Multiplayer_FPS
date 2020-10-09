@@ -21,6 +21,11 @@ MonoBehaviour:
   recoil: 4
   kickback: 0.5
   aimRate: 7
-  reloadTime: 2.5
-  prefab: {fileID: 5391432898298246633, guid: 220e814a49493fc499147b59394d9b80, type: 3}
+  reloadTime: 2
+  prefab: {fileID: 1997507513380148126, guid: a74661b42f4f4bb4ca1218cdf36e1550, type: 3}
   damage: 100
+  mainFOV: 0.7
+  weaponFOV: 0.45
+  gunshotSound: {fileID: 8300000, guid: c35c1d7f4d3f39b43a42a0d7687c62d6, type: 3}
+  pitchRandomization: 0.2
+  shotVolume: 0.8

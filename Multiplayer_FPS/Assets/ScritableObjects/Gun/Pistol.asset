@@ -16,10 +16,16 @@ MonoBehaviour:
   fireRate: 0.15
   ammo: 20
   clipsize: 3
+  burst: 0
   bloom: 20
   recoil: 10
   kickback: 0.15
   aimRate: 7
   reloadTime: 2
-  prefab: {fileID: 5391432898298246633, guid: 687ac63b517c92e4fbcc665c5e5afcc1, type: 3}
+  prefab: {fileID: 1997507513380148126, guid: a41feda72f8ebfd41a56bf0117b7e447, type: 3}
   damage: 100
+  mainFOV: 0.8
+  weaponFOV: 0.7
+  gunshotSound: {fileID: 8300000, guid: c35c1d7f4d3f39b43a42a0d7687c62d6, type: 3}
+  pitchRandomization: 0.025
+  shotVolume: 0.5
