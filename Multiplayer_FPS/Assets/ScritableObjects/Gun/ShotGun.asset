@@ -23,6 +23,7 @@ MonoBehaviour:
   aimRate: 10
   reloadTime: 2
   prefab: {fileID: 1997507513380148126, guid: 30b482988b2ac09419be5a084929a09b, type: 3}
+  display: {fileID: 731682543466683157, guid: 1cd61ba672290924889a8fc459ae846d, type: 3}
   damage: 150
   mainFOV: 0.7
   weaponFOV: 0.45

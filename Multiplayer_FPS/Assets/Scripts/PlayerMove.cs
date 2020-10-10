@@ -1,11 +1,11 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine;
 using Photon.Pun;
+using TMPro;
 
-
-public class PlayerMove : MonoBehaviourPunCallbacks
+public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
 {
     #region variables
     public float speed = 10f;
@@ -33,6 +33,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     public float crouchAmout;
     public GameObject standingCollider;
     public GameObject crouchingCollider;
+    public GameObject mesh;
     private bool crouched;
 
     public Camera normalCam;
@@ -57,6 +58,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     private Transform ui_healthbar;
     private Transform ui_fuelbar;
     private Text ui_ammo;
+    private Text ui_username;
 
     private bool sliding;
     private float slide_time;
@@ -64,6 +66,14 @@ public class PlayerMove : MonoBehaviourPunCallbacks
 
     private bool isAiming;
     private bool canJet;
+
+    private Vector3 normalCamTarget;
+    private Vector3 weaponCamTarget;
+
+    private Animator anim;
+
+    [HideInInspector] public ProfileData playerProfile;
+    public TextMeshPro playerUsername;
     #endregion
 
     #region monobehaviour callbacks
@@ -83,7 +93,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             gameObject.layer = 11;
             standingCollider.layer = 11;
             crouchingCollider.layer = 11;
-
+            ChangeLayerRecursively(mesh.transform, 11);
         }
 
         rb = GetComponent<Rigidbody>();
@@ -101,11 +111,20 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             ui_healthbar = GameObject.Find("HUD/Health/Bar").transform;
             ui_fuelbar = GameObject.Find("HUD/Fuel/Bar").transform;
             ui_ammo = GameObject.Find("HUD/Ammo/Text").GetComponent<Text>();
+            ui_username = GameObject.Find("HUD/Username/Text").GetComponent<Text>();
             RefreshHealthBar();
-            
-        }
-       
 
+            ui_username.text = Luncher.myProfile.username;
+            photonView.RPC("SyncProfile", RpcTarget.All, Luncher.myProfile.username, Luncher.myProfile.level, Luncher.myProfile.xp);
+            anim = GetComponent<Animator>();
+            
+        }     
+    }
+
+    private void ChangeLayerRecursively(Transform p_trans, int p_layer)
+    {
+        p_trans.gameObject.layer = p_layer;
+        foreach (Transform t in p_trans) ChangeLayerRecursively(t, p_layer);
     }
     private void Update()
     {
@@ -163,38 +182,45 @@ public class PlayerMove : MonoBehaviourPunCallbacks
 
 
         //HeadBob
-        if(sliding)  // if sliding
+        if (!IsGrounded)
+        {
+            //In Air
+            HeadBob(idleCounter, 10.025f, 10.025f);
+            idleCounter += 0;
+            weaponParent.localPosition = Vector3.MoveTowards(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 2f);
+        }
+       else if(sliding)  // if sliding
         {
             HeadBob(movementCounter, 0.15f, 5.075f);
-            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
+            weaponParent.localPosition = Vector3.MoveTowards(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
         }
 
        else if(t_hmove == 0 && t_vmove == 0) // if standing
         {
             HeadBob(idleCounter, 10.025f, 10.025f);
             idleCounter += Time.deltaTime;
-            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 2f);
+            weaponParent.localPosition = Vector3.MoveTowards(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 2f);
         }
 
         else if(!IsSprinting && !IsCrouching)  // if walking
         {
             HeadBob(movementCounter, 5.035f, 5.035f);
             movementCounter += Time.deltaTime * 3f;
-            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
+            weaponParent.localPosition = Vector3.MoveTowards(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
         }
 
         else if (crouched)  // if crouching
         {
             HeadBob(movementCounter, 0.02f, 0.02f);
             movementCounter += Time.deltaTime * 3f;
-            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
+            weaponParent.localPosition = Vector3.MoveTowards(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 6f);
         }
 
         else   // if sprinting
         {
             HeadBob(movementCounter, 0.09f, 0.05f);
             movementCounter += Time.deltaTime * 7f;
-            weaponParent.localPosition = Vector3.Lerp(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 10f);
+            weaponParent.localPosition = Vector3.MoveTowards(weaponParent.localPosition, targetWeaponBobPosition, Time.deltaTime * 10f);
         }
 
 
@@ -322,19 +348,19 @@ public class PlayerMove : MonoBehaviourPunCallbacks
                 current_fuel = Mathf.Min(max_fuel, current_fuel + Time.fixedDeltaTime * jetRecovery);
         }
 
-        ui_fuelbar.localScale = new Vector3(current_fuel / max_fuel, 1, 1);
+      //  ui_fuelbar.localScale = new Vector3(current_fuel / max_fuel, 1, 1);
 
         //Aiming
-        weapon.Aim(isAiming);
+      isAiming =   weapon.Aim(isAiming);
 
-        //Camera stuff
-        if (IsSliding)
+        //Camera Stuff
+        if (sliding)
         {
-            normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier * 1.25f, Time.deltaTime * 8f);
+            normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier * 1.15f, Time.deltaTime * 8f);
             weaponCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * sprintFOVModifier * 1.15f, Time.deltaTime * 8f);
 
-            normalCam.transform.localPosition = Vector3.Lerp(normalCam.transform.localPosition, originNormalCamPosition + Vector3.down * slideAmout, Time.deltaTime * 6f);
-            weaponCam.transform.localPosition = Vector3.Lerp(weaponCam.transform.localPosition, originNormalCamPosition + Vector3.down * slideAmout, Time.deltaTime * 6f);
+            normalCamTarget = Vector3.MoveTowards(normalCam.transform.localPosition, originNormalCamPosition + Vector3.down * slideAmout, Time.deltaTime);
+            weaponCamTarget = Vector3.MoveTowards(weaponCam.transform.localPosition, originNormalCamPosition + Vector3.down * slideAmout, Time.deltaTime);
         }
         else
         {
@@ -348,29 +374,52 @@ public class PlayerMove : MonoBehaviourPunCallbacks
                 normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV * weapon.currentGunData.mainFOV, Time.deltaTime * 8f);
                 weaponCam.fieldOfView = Mathf.Lerp(weaponCam.fieldOfView, baseFOV * weapon.currentGunData.weaponFOV, Time.deltaTime * 8f);
             }
-            if (crouched)
-            {
-                normalCam.transform.localPosition = Vector3.Lerp(normalCam.transform.localPosition, originNormalCamPosition + Vector3.down * crouchAmout, Time.deltaTime * 6f);
-                weaponCam.transform.localPosition = Vector3.Lerp(weaponCam.transform.localPosition, originNormalCamPosition + Vector3.down * crouchAmout, Time.deltaTime * 6f);
-            }
-
             else
             {
                 normalCam.fieldOfView = Mathf.Lerp(normalCam.fieldOfView, baseFOV, Time.deltaTime * 8f);
                 weaponCam.fieldOfView = Mathf.Lerp(weaponCam.fieldOfView, baseFOV, Time.deltaTime * 8f);
             }
+
+            if (crouched)
+            {
+                normalCamTarget = Vector3.MoveTowards(normalCam.transform.localPosition, originNormalCamPosition + Vector3.down * crouchAmout, Time.deltaTime);
+                weaponCamTarget = Vector3.MoveTowards(weaponCam.transform.localPosition, originNormalCamPosition + Vector3.down * crouchAmout, Time.deltaTime);
+            }
+            else
+            {
+                normalCamTarget = Vector3.MoveTowards(normalCam.transform.localPosition, originNormalCamPosition, Time.deltaTime);
+                weaponCamTarget = Vector3.MoveTowards(weaponCam.transform.localPosition, originNormalCamPosition, Time.deltaTime);
+            }
         }
-      
+
+        //Animations
+        float t_anim_horizontal = 0f;
+        float t_anim_vertical = 0f;
+
+        if (IsGrounded)
+        {
+            t_anim_horizontal = t_direction.x;
+            t_anim_vertical = t_direction.z;
+        }
+
+        anim.SetFloat("Horizontal", t_anim_horizontal);
+        anim.SetFloat("Vertical", t_anim_vertical);
+    }
+
+    private void LateUpdate()
+    {
+        normalCam.transform.localPosition = normalCamTarget;
+        weaponCam.transform.localPosition = weaponCamTarget;
     }
     #endregion
 
     #region
-    
+
 
 
     #endregion
 
-  
+
     void HeadBob(float x_z, float x_intensity, float y_intensity)
     {
         float t_aim_adjust = 1f;
@@ -383,6 +432,13 @@ public class PlayerMove : MonoBehaviourPunCallbacks
     {
         float t_health_ratio = (float)current_health / (float)max_health;
         ui_healthbar.localScale = Vector3.Lerp(ui_healthbar.localScale,  new Vector3(t_health_ratio, 1, 1), Time.deltaTime * 8f);
+    }
+
+    [PunRPC]
+    private void SyncProfile(string p_username, int p_level, int p_xp)
+    {
+        playerProfile = new ProfileData(p_username, p_level, p_xp);
+        playerUsername.text = playerProfile.username;
     }
 
     [PunRPC]
@@ -422,6 +478,11 @@ public class PlayerMove : MonoBehaviourPunCallbacks
             }
         }
       
+    }
+
+    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    {
+        throw new System.NotImplementedException();
     }
 
 

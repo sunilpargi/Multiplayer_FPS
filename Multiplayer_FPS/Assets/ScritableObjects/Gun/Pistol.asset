@@ -23,9 +23,12 @@ MonoBehaviour:
   aimRate: 7
   reloadTime: 2
   prefab: {fileID: 1997507513380148126, guid: a41feda72f8ebfd41a56bf0117b7e447, type: 3}
+  display: {fileID: 731682543466683157, guid: 1cd61ba672290924889a8fc459ae846d, type: 3}
   damage: 100
   mainFOV: 0.8
-  weaponFOV: 0.7
+  weaponFOV: 0.6
   gunshotSound: {fileID: 8300000, guid: c35c1d7f4d3f39b43a42a0d7687c62d6, type: 3}
   pitchRandomization: 0.025
   shotVolume: 0.5
+  pellets: 0
+  recovery: 0

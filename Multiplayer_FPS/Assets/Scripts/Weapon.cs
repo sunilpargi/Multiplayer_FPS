@@ -7,7 +7,7 @@ using Photon.Pun;
 public class Weapon : MonoBehaviourPunCallbacks
 {
     #region varibles
-    public Gun[] loadout;
+    public List<Gun> loadout;
     private int currentIndex;
 
     public Transform weaponParent;
@@ -23,8 +23,13 @@ public class Weapon : MonoBehaviourPunCallbacks
     private bool isReloading;
     [HideInInspector] public Gun currentGunData;
 
-    Animator currentWeaponAnim;
+   
     public AudioSource sfx;
+    public AudioClip hitmarkerSound;
+
+    private Image hitmarkerImage;
+    private float hitmarkerWait;
+    private Color CLEARWHITE = new Color(1, 1, 1, 0);
     #endregion
 
 
@@ -32,8 +37,11 @@ public class Weapon : MonoBehaviourPunCallbacks
     private void Start()
     {
         foreach (Gun a in loadout) a.Initialise();
+
+        hitmarkerImage = GameObject.Find("HUD/HitMarker/Image").GetComponent<Image>();
+        hitmarkerImage.color = CLEARWHITE;
         Equip(0);
-        currentWeaponAnim = currentWeapon.GetComponent<Animator>();
+        
         
     }
     void Update()
@@ -92,8 +100,19 @@ public class Weapon : MonoBehaviourPunCallbacks
 
           
         }
+        if (photonView.IsMine)
+        {
+            if (hitmarkerWait > 0)
+            {
+                hitmarkerWait -= Time.deltaTime;
+            }
+            else if (hitmarkerImage.color.a > 0)
+            {
+                hitmarkerImage.color = Color.Lerp(hitmarkerImage.color, CLEARWHITE, Time.deltaTime * 2f);
+            }
+        }
 
-        
+
     }
     #endregion
 
@@ -149,14 +168,33 @@ public class Weapon : MonoBehaviourPunCallbacks
         currentGunData = loadout[p_ind];
 
     }
+
+    [PunRPC]
+    void PickupWeapon(string name)
+    {
+        Gun newWeapon = GunLibrary.FindGun(name);
+        newWeapon.Initialise();
+
+        if (loadout.Count >= 2)
+        {
+            loadout[currentIndex] = newWeapon;
+            Equip(currentIndex);
+        }
+        else
+        {
+            loadout.Add(newWeapon);
+            Equip(loadout.Count - 1);
+        }
+    }
     private void ChangeLayersRecursively(GameObject p_target, int p_layer)
     {
         p_target.layer = p_layer;
         foreach (Transform a in p_target.transform) ChangeLayersRecursively(a.gameObject, p_layer);
     }
-    public void Aim(bool p_Aiming)
+    public bool Aim(bool p_Aiming)
     {
-        if (!currentWeapon) return;
+        if (!currentWeapon) return false;
+        if (isReloading) p_Aiming = false;
 
         isAiming = p_Aiming;
 
@@ -175,6 +213,7 @@ public class Weapon : MonoBehaviourPunCallbacks
             //hip
             t_Anchor.position = Vector3.Lerp(t_Anchor.position, t_states_hip.position, Time.deltaTime * loadout[currentIndex].aimRate);
         }
+        return p_Aiming;
     }
 
     [PunRPC] // other player can call the function
@@ -206,9 +245,27 @@ public class Weapon : MonoBehaviourPunCallbacks
 
                 if (photonView.IsMine)
                 {
+                    //shotting player 
                     if (t_hit.collider.gameObject.layer == 11)
                     {
                         t_hit.collider.transform.root.gameObject.GetPhotonView().RPC("TakeDamage", RpcTarget.All, loadout[currentIndex].damage);
+
+                        //show hitmarker
+                        hitmarkerImage.color = Color.white;
+                        sfx.PlayOneShot(hitmarkerSound);
+                        hitmarkerWait = 1f;
+                    }
+
+                    //shooting target
+                    if (t_hit.collider.gameObject.layer == 12)
+                    {
+                        //destroy
+                        Destroy(t_hit.collider.gameObject);
+
+                        //show hitmarker
+                        hitmarkerImage.color = Color.white;
+                        sfx.PlayOneShot(hitmarkerSound);
+                        hitmarkerWait = 1f;
                     }
                 }
             }

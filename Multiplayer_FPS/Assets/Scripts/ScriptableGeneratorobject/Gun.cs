@@ -17,6 +17,7 @@ public class Gun : ScriptableObject
     public float aimRate;
     public float reloadTime;
     public GameObject prefab;
+    public GameObject display;
     public int damage;
    [Range(0,1)] public float mainFOV;
     [Range(0, 1)] public float weaponFOV;
