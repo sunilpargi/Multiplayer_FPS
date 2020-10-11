@@ -71,6 +71,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
     private Vector3 weaponCamTarget;
 
     private Animator anim;
+    private float aimAngle;
 
     [HideInInspector] public ProfileData playerProfile;
     public TextMeshPro playerUsername;
@@ -473,6 +474,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
             if (current_health <= 0)
             {
                 manager.Spawn();
+                manager.ChangeStat_S(PhotonNetwork.LocalPlayer.ActorNumber, 1, 1);
                 PhotonNetwork.Destroy(gameObject);
                 Debug.Log("Died");
             }
@@ -480,11 +482,17 @@ public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
       
     }
 
-    public void OnPhotonSerializeView(PhotonStream stream, PhotonMessageInfo info)
+    public void OnPhotonSerializeView(PhotonStream p_stream, PhotonMessageInfo p_message)
     {
-        throw new System.NotImplementedException();
+        if (p_stream.IsWriting)
+        {
+            p_stream.SendNext((int)(weaponParent.transform.localEulerAngles.x * 100f));
+        }
+        else
+        {
+            aimAngle = (int)p_stream.ReceiveNext() / 100f;
+        }
     }
-
 
     #endregion
 

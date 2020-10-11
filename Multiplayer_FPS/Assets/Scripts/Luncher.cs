@@ -4,6 +4,7 @@ using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine.UI;
+using TMPro;
 
 public class ProfileData
 {
@@ -27,15 +28,16 @@ public class ProfileData
 }
     public class Luncher : MonoBehaviourPunCallbacks
 {
-    public InputField usernameField;
-    public InputField roomnameField;
+    public TMP_InputField usernameField;
+    public TMP_InputField roomnameField;
     public Slider maxPlayersSlider;
     public Text maxPlayersValue;
 
     public static ProfileData myProfile = new ProfileData();
 
     public GameObject tabMain;
-    public GameObject tabRooms; public GameObject tabCreate;
+    public GameObject tabRooms;
+    public GameObject tabCreate;
 
 
     public GameObject buttonRoom;
@@ -82,14 +84,32 @@ public class ProfileData
     public void Create()
     {
         RoomOptions options = new RoomOptions();
-        options.MaxPlayers = 8;
-        PhotonNetwork.CreateRoom("", options);
+        options.MaxPlayers = (byte)maxPlayersSlider.value;
+
+        options.CustomRoomPropertiesForLobby = new string[] { "map", "mode" };
+
+        ExitGames.Client.Photon.Hashtable properties = new ExitGames.Client.Photon.Hashtable();
+        properties.Add("map", 0);
+        options.CustomRoomProperties = properties;
+
+        PhotonNetwork.CreateRoom(roomnameField.text, options);
+    }
+
+    public void ChangeMap()
+    {
+       
+    }
+
+ 
+    public void ChangeMaxPlayersSlider(float t_value)
+    {
+        maxPlayersValue.text = Mathf.RoundToInt(t_value).ToString();
     }
     public void TabCloseAll()
     {
         tabMain.SetActive(false);
         tabRooms.SetActive(false);
-       
+        tabCreate.SetActive(false);
     }
 
     public void TabOpenMain()
@@ -103,8 +123,13 @@ public class ProfileData
         TabCloseAll();
         tabRooms.SetActive(true);
     }
+    public void TabOpenCreate()
+    {
+        TabCloseAll();
+        tabCreate.SetActive(true);
+    }
 
-    private void ClearRoomList()
+        private void ClearRoomList()
     {
         Transform content = tabRooms.transform.Find("Scroll View/Viewport/Content");
         foreach (Transform a in content) Destroy(a.gameObject);
@@ -129,16 +154,30 @@ public class ProfileData
 
         base.OnRoomListUpdate(roomList);
     }
-
+    private void VerifyUsername()
+    {
+        if (string.IsNullOrEmpty(usernameField.text))
+        {
+            myProfile.username = "RANDOM_USER_" + Random.Range(100, 1000);
+        }
+        else
+        {
+            myProfile.username = usernameField.text;
+        }
+    }
     public void JoinRoom(Transform p_button)
     {
         string t_roomName = p_button.Find("Name").GetComponent<Text>().text;
+
+        VerifyUsername();
         PhotonNetwork.JoinRoom(t_roomName);
     }
 
 
-        void StartGame()
+    void StartGame()
     {
+        VerifyUsername();
+
         if (PhotonNetwork.CurrentRoom.PlayerCount == 1)
         {
             PhotonNetwork.LoadLevel(1);
