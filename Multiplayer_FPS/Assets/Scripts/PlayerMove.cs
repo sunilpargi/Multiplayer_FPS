@@ -179,7 +179,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
             current_recovery = 0;
         }
 
-        if (Input.GetKeyDown(KeyCode.U)) Takedamage(500);
+        if (Input.GetKeyDown(KeyCode.U)) Takedamage(500,-1);
 
 
         //HeadBob
@@ -464,7 +464,7 @@ public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
     }
     
     #region public method   
-    public void Takedamage(int p_damage)
+    public void Takedamage(int p_damage, int p_actor)
     {
         if (photonView.IsMine)
         {
@@ -475,6 +475,10 @@ public class PlayerMove : MonoBehaviourPunCallbacks, IPunObservable
             {
                 manager.Spawn();
                 manager.ChangeStat_S(PhotonNetwork.LocalPlayer.ActorNumber, 1, 1);
+
+                if (p_actor >= 0)
+                    manager.ChangeStat_S(p_actor, 0, 1);
+
                 PhotonNetwork.Destroy(gameObject);
                 Debug.Log("Died");
             }

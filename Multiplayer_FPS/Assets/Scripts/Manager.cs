@@ -25,14 +25,32 @@ public class PlayerInfo
         this.awayTeam = t;
     }
 }
-public class Manager : MonoBehaviour, IOnEventCallback
+
+public enum GameState
 {
+    Waiting = 0,
+    Starting = 1,
+    Playing = 2,
+    Ending = 3
+}
+public class Manager : MonoBehaviourPunCallbacks, IOnEventCallback
+{
+
+    public int mainmenu = 0;
+    public int killcount = 3;
+    public GameObject mapcam;
     public string player_prefab;
     public Transform[] spawn_point;
 
     public List<PlayerInfo> playerInfo = new List<PlayerInfo>();
     public int myind;
 
+    private Text ui_mykills;
+    private Text ui_mydeaths;
+    private Transform ui_leaderboard;
+    private Transform ui_endgame;
+
+    private GameState state = GameState.Waiting;
     #region Codes
     public enum EventCodes : byte
     {
@@ -46,12 +64,26 @@ public class Manager : MonoBehaviour, IOnEventCallback
     #endregion
     private void Start()
     {
-        Spawn();
+        mapcam.SetActive(false);
         ValidateConnection();
+        InitializeUI();
+        Spawn();
     }
+    private void Update()
+    {
+        if (state == GameState.Ending)
+        {
+            return;
+        }
 
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            if (ui_leaderboard.gameObject.activeSelf) ui_leaderboard.gameObject.SetActive(false);
+            else Leaderboard(ui_leaderboard);
+        }
+    }
     // Update is called once per frame
-   public void Spawn()
+    public void Spawn()
     {
         Transform t_spawn = spawn_point[ Random.Range(0, spawn_point.Length)];
         PhotonNetwork.Instantiate(player_prefab, t_spawn.position, t_spawn.rotation);
@@ -61,6 +93,123 @@ public class Manager : MonoBehaviour, IOnEventCallback
         if (PhotonNetwork.IsConnected) return;
         SceneManager.LoadScene(0);
     }
+
+
+    private void InitializeUI()
+    {
+        ui_mykills = GameObject.Find("HUD/Stats/Kills/Text").GetComponent<Text>();
+        ui_mydeaths = GameObject.Find("HUD/Stats/Deaths/Text").GetComponent<Text>();
+        //ui_timer = GameObject.Find("HUD/Timer/Text").GetComponent<Text>();
+        ui_leaderboard = GameObject.Find("HUD").transform.Find("Leaderboard").transform;
+        ui_endgame = GameObject.Find("Canvas").transform.Find("End Game").transform;
+
+        RefreshMyStats();
+    }
+
+    private void RefreshMyStats()
+    {
+        if (playerInfo.Count > myind)
+        {
+            ui_mykills.text = $"{playerInfo[myind].kills} kills";
+            ui_mydeaths.text = $"{playerInfo[myind].deaths} deaths";
+        }
+        else
+        {
+            ui_mykills.text = "0 kills";
+            ui_mydeaths.text = "0 deaths";
+        }
+    }
+
+    private void Leaderboard(Transform p_lb)
+    {
+  
+        // clean up
+        for (int i = 2; i < p_lb.childCount; i++)
+        {
+            Destroy(p_lb.GetChild(i).gameObject);
+        }
+
+        // set details
+        p_lb.Find("Header/Mode").GetComponent<Text>().text = System.Enum.GetName(typeof(GameMode), GameSettings.GameMode);
+        p_lb.Find("Header/Map").GetComponent<Text>().text = SceneManager.GetActiveScene().name;
+
+        // set scores
+        if (GameSettings.GameMode == GameMode.TDM)
+        {
+            p_lb.Find("Header/Score/Home").GetComponent<Text>().text = "0";
+            p_lb.Find("Header/Score/Away").GetComponent<Text>().text = "0";
+        }
+
+        // cache prefab
+        GameObject playercard = p_lb.GetChild(1).gameObject;
+        playercard.SetActive(false);
+
+        // sort
+        List<PlayerInfo> sorted = SortPlayers(playerInfo);
+
+        // display
+        bool t_alternateColors = false;
+        foreach (PlayerInfo a in sorted)
+        {
+            GameObject newcard = Instantiate(playercard, p_lb) as GameObject;
+
+            if (GameSettings.GameMode == GameMode.TDM)
+            {
+                newcard.transform.Find("Home").gameObject.SetActive(!a.awayTeam);
+                newcard.transform.Find("Away").gameObject.SetActive(a.awayTeam);
+            }
+
+            if (t_alternateColors) newcard.GetComponent<Image>().color = new Color32(0, 0, 0, 180);
+            t_alternateColors = !t_alternateColors;
+
+            newcard.transform.Find("Level").GetComponent<Text>().text = a.profile.level.ToString("00");
+            newcard.transform.Find("Username").GetComponent<Text>().text = a.profile.username;
+            newcard.transform.Find("Score Value").GetComponent<Text>().text = (a.kills * 100).ToString();
+            newcard.transform.Find("Kills Value").GetComponent<Text>().text = a.kills.ToString();
+            newcard.transform.Find("Deaths Value").GetComponent<Text>().text = a.deaths.ToString();
+
+            newcard.SetActive(true);
+        }
+
+        // activate
+        p_lb.gameObject.SetActive(true);
+        p_lb.parent.gameObject.SetActive(true);
+    }
+
+    private List<PlayerInfo> SortPlayers(List<PlayerInfo> p_info)
+    {
+        List<PlayerInfo> sorted = new List<PlayerInfo>();
+
+       
+            while (sorted.Count < p_info.Count)
+            {
+                // set defaults
+                short highest = -1;
+                PlayerInfo selection = p_info[0];
+
+                // grab next highest player
+                foreach (PlayerInfo a in p_info)
+                {
+                    if (sorted.Contains(a)) continue;
+                    if (a.kills > highest)
+                    {
+                        selection = a;
+                        highest = a.kills;
+                    }
+                }
+
+                // add player
+                sorted.Add(selection);
+            }
+        
+    }
+
+
+
+
+
+
+    #region Photon
 
     public void OnEvent(EventData photonEvent)
     {
@@ -93,8 +242,15 @@ public class Manager : MonoBehaviour, IOnEventCallback
         }
     }
 
-    #region Events
+    public override void OnLeftRoom()
+    {
+        base.OnLeftRoom();
+        SceneManager.LoadScene(mainmenu);
+    }
 
+    #endregion
+
+    #region Events
     public void NewPlayer_S(ProfileData p)
     {
         object[] package = new object[6];
@@ -225,8 +381,9 @@ public class Manager : MonoBehaviour, IOnEventCallback
                         break;
                 }
 
+                if (i == myind) RefreshMyStats();
 
-                break;
+                return;
             }
         }
 
